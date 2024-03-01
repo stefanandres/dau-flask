@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  dau:
+    restart: unless-stopped
+    networks:
+      - traefik_traefik_net
+    build: .
+    command: python app.py run -h 0.0.0.0
+    ports:
+      - 8080
+#    environment:
+#      - FLASK_APP=project/__init__.py
+#      - FLASK_DEBUG=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dau.rule=Host(`${COMPOSE_TRAEFIK_HOSTNAME}`)"
+      - "traefik.http.routers.dau.entrypoints=https"
+      - "traefik.http.routers.dau.tls.certresolver=le"
+    networks:
+      - traefik_traefik_net
+
+networks:
+  traefik_traefik_net:
+    external: true
