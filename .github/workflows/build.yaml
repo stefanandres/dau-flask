@@ -1,0 +1,52 @@
+name: build-push
+on:
+  push:
+    branches:
+      # set branch to protected branch (i.e. not pushing into to, only allow merge)
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      # Add output with tags to pass to different sequential jobs below
+      tags: ${{ steps.export.outputs.tags }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # initially https://github.com/actions/runner/issues/1039#issuecomment-895908863
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+            #tags: ${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}-${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - run: echo "tags=${{ steps.meta.outputs.tags }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+        id: export
+        name: Export tag
