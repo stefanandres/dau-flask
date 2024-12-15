@@ -2,8 +2,11 @@ name: build-push
 on:
   push:
     branches:
-      # set branch to protected branch (i.e. not pushing into to, only allow merge)
       - main
+    paths:
+      - Dockerfile
+      - app.py
+      - requirements.txt
   workflow_dispatch:
 
 concurrency:
