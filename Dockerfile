@@ -1,4 +1,4 @@
-FROM python:3.11-slim@sha256:ff0cf9465290d0d5949ae0bcc71c085d0b53d87246211522417e3cafa7da293b
+FROM python:3.11-slim@sha256:7e44de6fe87a9213c6ec7271a2b2c681ef2e8cd172fce65cc983f105a750efa0
 
 # set work directory
 WORKDIR /app
