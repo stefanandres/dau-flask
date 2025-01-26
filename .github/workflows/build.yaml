@@ -1,5 +1,11 @@
 name: build-push
 on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - app.py
+      - requirements.txt
+      - .github/workflows/build.yaml
   push:
     branches:
       - main
@@ -23,6 +29,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      pull-requests: write
     outputs:
       # Add output with tags to pass to different sequential jobs below
       tags: ${{ steps.export.outputs.tags }}
@@ -50,10 +57,36 @@ jobs:
         uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6
         with:
           context: .
-          push: true
-            #tags: ${{ github.sha }}
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
       - run: echo "tags=${{ steps.meta.outputs.tags }}-${{ github.sha }}" >> $GITHUB_OUTPUT
         id: export
         name: Export tag
+
+      - name: Test image
+        run: |
+          set -exu
+
+          container_id=$(docker run -p 8080:8080 -d ${{ steps.meta.outputs.tags }}-${{ github.sha }} bash -c "python app.py run -h 0.0.0.0")
+          docker ps
+          while [ "$(docker inspect -f '{{.State.Status}}' "$container_id")" != "running" ]; do
+            sleep 1
+          done
+          sleep 3
+          set +x
+          exec > >(tee /tmp/output.txt) 2>&1
+          echo "## Output from CI:"
+          echo "\`\`\`"
+          set -v
+          curl --fail http://localhost:8080
+          curl --fail http://localhost:8080/foobar
+          set +v
+          echo "\`\`\`"
+
+      - name: comment PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
+        with:
+          file-path: /tmp/output.txt
+          comment-tag: "ci"
